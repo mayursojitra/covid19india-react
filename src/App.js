@@ -1,45 +1,135 @@
-import React, {useState, useEffect} from 'react';
-import {BrowserRouter as Router, Switch, Route, Redirect} from 'react-router-dom';
-
 import './App.scss';
-import Home from './components/home';
+import Blog from './components/blog';
 import Navbar from './components/navbar';
-import Links from './components/links';
-import Summary from './components/summary';
-import Cluster from './components/cluster';
-import FAQ from './components/faq';
+import ScrollToTop from './utils/ScrollToTop';
 
-const history = require('history').createBrowserHistory;
+import React, {lazy, useState, Suspense} from 'react';
+import {Helmet} from 'react-helmet';
+import {
+  BrowserRouter as Router,
+  Route,
+  Redirect,
+  Switch,
+} from 'react-router-dom';
+import useDarkMode from 'use-dark-mode';
+
+const Home = lazy(() =>
+  import('./components/home' /* webpackChunkName: "Home" */)
+);
+const FAQ = lazy(() =>
+  import('./components/faq' /* webpackChunkName: "About" */)
+);
+const Demographics = lazy(() =>
+  import('./components/demographics' /* webpackChunkName: "Demographics" */)
+);
+const State = lazy(() =>
+  import('./components/state' /* webpackChunkName: "State" */)
+);
+const Essentials = lazy(() =>
+  import('./components/essentials' /* webpackChunkName: "Essentials" */)
+);
+
+const LanguageSwitcher = lazy(() =>
+  import(
+    './components/languageswitcher' /* webpackChunkName: "LanguageSwitcher" */
+  )
+);
+
+const schemaMarkup = {
+  '@context': 'http://schema.org/',
+  '@type': 'NGO',
+  name: 'Coronavirus Outbreak in India: Latest Map and Case Count',
+  alternateName: 'COVID-19 Tracker',
+  url: 'https://www.covid19india.org/',
+  image: 'https://www.covid19india.org/thumbnail.png',
+};
 
 function App() {
+  const darkMode = useDarkMode(false);
+  const [showLanguageSwitcher, setShowLanguageSwitcher] = useState(false);
+
+  const pages = [
+    {
+      pageLink: '/',
+      view: Home,
+      displayName: 'Home',
+      showInNavbar: true,
+    },
+    {
+      pageLink: '/demographics',
+      view: Demographics,
+      displayName: 'Demographics',
+      showInNavbar: true,
+    },
+    {
+      pageLink: '/essentials',
+      view: Essentials,
+      displayName: 'Essentials',
+      showInNavbar: true,
+    },
+    {
+      pageLink: '/about',
+      view: FAQ,
+      displayName: 'About',
+      showInNavbar: true,
+    },
+    {
+      pageLink: '/blog',
+      view: Blog,
+      displayName: 'Blog',
+      showInNavbar: true,
+    },
+    {
+      pageLink: '/state/:stateCode',
+      view: State,
+      displayName: 'State',
+      showInNavbar: false,
+    },
+  ];
+
   return (
     <div className="App">
+      <Helmet>
+        <script type="application/ld+json">
+          {JSON.stringify(schemaMarkup)}
+        </script>
+      </Helmet>
 
-      <Router history={history}>
-        <Route render={({location}) => (
-          <div className="Almighty-Router">
-            <Navbar />
-            <Route exact path="/" render={() => <Redirect to="/" />} />
-            <Switch location={location}>
-              <Route exact path="/" render={(props) => <Home {...props}/>} />
-              <Route exact path="/links" render={(props) => <Links {...props}/>} />
-              <Route exact path="/summary" render={(props) => <Summary {...props}/>} />
-              <Route exact path="/clusters" render={(props) => <Cluster {...props}/>} />
-              <Route exact path="/faqs" render={(props) => <FAQ {...props}/>} />
-            </Switch>
-          </div>
-        )}
+      <Suspense fallback={<div />}>
+        <LanguageSwitcher
+          {...{showLanguageSwitcher, setShowLanguageSwitcher}}
         />
-      </Router>
+      </Suspense>
 
-      <footer className="fadeInUp" style={{animationDelay: '2s'}}>
-        <img src="/icon.png" alt="logo"/>
-        <h5>We stand with everyone fighting on the frontlines</h5>
-        <div className="link">
-          <a href="https://github.com/covid19india">covid19india</a>
-        </div>
-      </footer>
-
+      <Suspense fallback={<div />}>
+        <Router>
+          <ScrollToTop />
+          <Navbar
+            pages={pages}
+            {...{darkMode}}
+            {...{showLanguageSwitcher, setShowLanguageSwitcher}}
+          />
+          <Route
+            render={({location}) => (
+              <React.Fragment>
+                <Switch location={location}>
+                  {pages.map((page, index) => {
+                    return (
+                      <Route
+                        exact
+                        path={page.pageLink}
+                        render={({match}) => <page.view />}
+                        key={index}
+                      />
+                    );
+                  })}
+                  <Redirect to="/" />
+                </Switch>
+              </React.Fragment>
+            )}
+          />
+        </Router>
+      </Suspense>
     </div>
   );
 }
